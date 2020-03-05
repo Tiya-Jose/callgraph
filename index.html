@@ -1,279 +1,262 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE>
+
+<html lang="en">
+
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="1671.6">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 11.0px Menlo; color: #000000}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 11.0px Menlo; color: #000000; min-height: 13.0px}
-    span.s1 {font-variant-ligatures: no-common-ligatures}
-  </style>
+    <meta charset="utf-8"/>
+
+    <title>Go call graph</title>
+
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+
+    <script src="https://unpkg.com/cytoscape-cose-bilkent@4.0.0/cytoscape-cose-bilkent.js"></script>
+
+    <style>
+        body {
+            font-family: helvetica, serif;
+            font-size: 14px;
+        }
+
+        #cy {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: absolute;
+            z-index: 10;
+        }
+
+        #info {
+            left: 0;
+            top: 0;
+            margin: 10px;
+        }
+
+        #pkg-list {
+            font-family: monospace;
+            color: black;
+            opacity: 0.7;
+        }
+
+        #gocyto-link {
+            position: absolute;
+            margin: 10px;
+            left: 0;
+            bottom: 0;
+            opacity: 0.5;
+            font-size: 1em;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            window.cy = cytoscape({
+                container: document.getElementById('cy'),
+
+                layout: {
+                    name: 'cose-bilkent',
+                    
+                    nodeDimensionsIncludeLabels: true,
+                    
+                    refresh: 30,
+                    
+                    fit: true,
+                    
+                    padding: 30,
+                    
+                    randomize: true,
+                    
+                    nodeRepulsion: 1000,
+                    
+                    idealEdgeLength: 40,
+                    
+                    edgeElasticity: 0.3,
+                    
+                    nestingFactor: 0.03,
+                    
+                    gravity: 0.15,
+                    
+                    numIter: 5000,
+                    
+                    tile: true,
+                    
+                    animate: 'end',
+                    
+                    tilingPaddingVertical: 30,
+                    
+                    tilingPaddingHorizontal: 30,
+                    
+                    gravityRangeCompound: 1.0,
+                    
+                    gravityCompound: 0.08,
+                    
+                    gravityRange: 2.0,
+                    
+                    initialEnergyOnIncremental: 0.9
+                },
+
+                style: [
+                    {
+                        selector: 'core',
+                        style: {
+                            "active-bg-opacity": 0.3,
+                            "active-bg-color": "#ff0",
+                        }
+                    },
+                    {
+                        selector: 'node',
+                        style: {
+                            'shape': 'tag',
+                            'border-color': '#323232',
+                            'border-opacity': 0.7,
+                            'border-width': 1,
+                            'border-style': 'solid',
+                            "font-weight": 300
+                        }
+                    },
+                    {
+                        selector: 'node[color]',
+                        style: {
+                            'shape': 'tag',
+                            'background-color': 'data(color)'
+                        }
+                    },
+                    {
+                        selector: 'node.global',
+                        style: {
+                            'shape': 'ellipse'
+                        }
+                    },
+                    {
+                        selector: 'node.unexported',
+                        style: {
+                            'border-color': '#323232',
+                            'border-opacity': 0.6,
+                            'border-width': 2,
+                            'border-style': 'dashed'
+                        }
+                    },
+
+                    {
+                        selector: 'node[label]',
+                        style: {
+                            label: "data(label)",
+                            "font-family": "monospace"
+                        }
+                    },
+
+                    {
+                        selector: 'node:parent',
+                        style: {
+                            'background-opacity': 0.333,
+                            'border-width': 0,
+                            'border-opacity': 0,
+                        },
+                    },
+                    {
+                        selector: 'node.package',
+                        style: {
+                            'font-style': "italic",
+                            "font-weight": 700
+                        },
+                    },
+                    {
+                        selector: 'node.type',
+                        style: {
+                            "font-weight": 700
+                        },
+                    },
+                    {
+                        selector: 'node:parent',
+                        style: {
+                            'compound-sizing-wrt-labels': 'include'
+                        },
+                    },
+
+                    {
+                        selector: 'edge',
+                        style: {
+                            'line-color': '#a12b87',
+                            'curve-style': "straight",
+                            "target-arrow-shape": "vee",
+                            "target-arrow-color": "#a12b87",
+                            "arrow-scale": 1.5,
+                        },
+                    },
+                    {
+                        selector: 'edge.function',
+                        style: {
+                            "curve-style": "bezier"
+                        }
+                    },
+                    {
+                        selector: 'edge.concurrent',
+                        style: {
+                            "mid-target-arrow-shape": "triangle-tee",
+                        }
+                    },
+                    {
+                        selector: 'edge.deferred',
+                        style: {
+                            "mid-target-arrow-shape": "diamond",
+                        }
+                    },
+                    {
+                        selector: 'edge.closure',
+                        style: {
+                            "line-style": "dashed",
+                            "line-dash-pattern": [6, 6],
+                        }
+                    },
+                    {
+                        selector: 'edge.static',
+                        style: {
+                            'line-color': '#ef60f9',
+                            "target-arrow-color": "#ef60f9",
+                        }
+                    },
+                    {
+                        selector: 'edge.dynamic',
+                        style: {
+                            'line-color': '#5ece5c',
+                            "target-arrow-color": "#5ece5c",
+                        }
+                    },
+                    {
+                        selector: 'edge.method',
+                        style: {
+                            'line-color': '#64a1a0',
+                            "target-arrow-color": "#64a1a0",
+                        }
+                    },
+                ],
+
+                elements: {"nodes":[{"data":{"id":"n10","label":"DBMW","parent":"n3","color":"#fdfebb"},"classes":["type","unexported2"]},{"data":{"id":"n3","label":"main","description":"zcontext","parent":"","color":"#92d4a4"},"classes":["package"]},{"data":{"id":"n6","label":"getReqID","parent":"n3","color":"#f28da4"},"classes":["global","unexported"]},{"data":{"id":"na","label":"HandlersTest","parent":"n3","color":"#fffcba"},"classes":["type","unexported2"]},{"data":{"id":"n9","label":".Get","parent":"na","color":"#ed687e"},"classes":["global"]},{"data":{"id":"nb","label":".AddToContext","parent":"na","color":"#3f59b5"},"classes":["global"]},{"data":{"id":"nd","label":"NewDBMW","parent":"n3","color":"#fbfdb8"},"classes":["global"]},{"data":{"id":"n2","label":"main","parent":"n3","color":"#3d4cc4"},"classes":["global","unexported"]},{"data":{"id":"n4","label":"NewHandlersTest","parent":"n3","color":"#ff7e85"},"classes":["global"]},{"data":{"id":"n7","label":"NextRequestID","parent":"n3","color":"#2365c3"},"classes":["global"]},{"data":{"id":"nf","label":".GetMW","parent":"n10","color":"#ed687e"},"classes":["global"]},{"data":{"id":"n12","label":".Post","parent":"na","color":"#ed687e"},"classes":["global"]},{"data":{"id":"n15","label":".PostMW","parent":"n10","color":"#ed687e"},"classes":["global"]}],"edges":[{"data":{"id":"n14","source":"n12","target":"n15"},"classes":["static","method","call"]},{"data":{"id":"n1","source":"n2","target":"n4"},"classes":["static","function","call"]},{"data":{"id":"n5","source":"n6","target":"n7"},"classes":["deferred","static","function","call"]},{"data":{"id":"n8","source":"n9","target":"nb"},"classes":["static","method","call"]},{"data":{"id":"nc","source":"n9","target":"nd"},"classes":["static","function","call"]},{"data":{"id":"ne","source":"n9","target":"nf"},"classes":["static","method","call"]},{"data":{"id":"n11","source":"n12","target":"nb"},"classes":["static","method","call"]},{"data":{"id":"n13","source":"n12","target":"nd"},"classes":["static","function","call"]}]}
+
+            });
+
+        });
+    </script>
 </head>
+
 <body>
-<p class="p1"><span class="s1">&lt;!DOCTYPE&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;html lang="en"&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;head&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;meta charset="utf-8"/&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;title&gt;Go call graph&lt;/title&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1"&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"&gt;&lt;/script&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;script src="https://unpkg.com/cytoscape-cose-bilkent@4.0.0/cytoscape-cose-bilkent.js"&gt;&lt;/script&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;style&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>body {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>font-family: helvetica, serif;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>font-size: 14px;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#cy {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>position: absolute;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>left: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>top: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>width: 100%;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>height: 100%;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>z-index: 1;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.overlay {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>position: absolute;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>z-index: 10;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#info {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>left: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>top: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>margin: 10px;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#pkg-list {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>font-family: monospace;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>color: black;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>opacity: 0.7;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#gocyto-link {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>position: absolute;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>margin: 10px;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>left: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>bottom: 0;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>opacity: 0.5;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>font-size: 1em;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;script&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>document.addEventListener('DOMContentLoaded', function () {</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>window.cy = cytoscape({</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>container: document.getElementById('cy'),</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>layout: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>name: 'cose-bilkent',</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>nodeDimensionsIncludeLabels: true,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>refresh: 30,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>fit: true,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>padding: 30,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>randomize: true,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>nodeRepulsion: 1000,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>idealEdgeLength: 40,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>edgeElasticity: 0.3,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>nestingFactor: 0.03,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>gravity: 0.15,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>numIter: 5000,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>tile: true,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>animate: 'end',</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>tilingPaddingVertical: 30,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>tilingPaddingHorizontal: 30,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>gravityRangeCompound: 1.0,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>gravityCompound: 0.08,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>gravityRange: 2.0,</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>initialEnergyOnIncremental: 0.9</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>},</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>style: [</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'core',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"active-bg-opacity": 0.3,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"active-bg-color": "#ff0",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'shape': 'tag',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-color': '#323232',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-opacity': 0.7,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-width': 1,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-style': 'solid',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"font-weight": 300</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node[color]',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'shape': 'tag',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'background-color': 'data(color)'</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node.global',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'shape': 'ellipse'</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node.unexported',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-color': '#323232',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-opacity': 0.6,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-width': 2,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-style': 'dashed'</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node[label]',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>label: "data(label)",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"font-family": "monospace"</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node:parent',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'background-opacity': 0.333,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-width': 0,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'border-opacity': 0,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node.package',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'font-style': "italic",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"font-weight": 700</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node.type',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"font-weight": 700</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'node:parent',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'compound-sizing-wrt-labels': 'include'</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'line-color': '#a12b87',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'curve-style': "straight",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"target-arrow-shape": "vee",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"target-arrow-color": "#a12b87",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"arrow-scale": 1.5,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.function',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"curve-style": "bezier"</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.concurrent',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"mid-target-arrow-shape": "triangle-tee",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.deferred',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"mid-target-arrow-shape": "diamond",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.closure',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"line-style": "dashed",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"line-dash-pattern": [6, 6],</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.static',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'line-color': '#ef60f9',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"target-arrow-color": "#ef60f9",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.dynamic',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'line-color': '#5ece5c',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"target-arrow-color": "#5ece5c",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>selector: 'edge.method',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>style: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>'line-color': '#64a1a0',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                            </span>"target-arrow-color": "#64a1a0",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>},</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>],</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>elements: {"nodes":[{"data":{"id":"n10","label":"DBMW","parent":"n3","color":"#fdfebb"},"classes":["type","unexported2"]},{"data":{"id":"n3","label":"main","description":"zcontext","parent":"","color":"#92d4a4"},"classes":["package"]},{"data":{"id":"n6","label":"getReqID","parent":"n3","color":"#f28da4"},"classes":["global","unexported"]},{"data":{"id":"na","label":"HandlersTest","parent":"n3","color":"#fffcba"},"classes":["type","unexported2"]},{"data":{"id":"n9","label":".Get","parent":"na","color":"#ed687e"},"classes":["global"]},{"data":{"id":"nb","label":".AddToContext","parent":"na","color":"#3f59b5"},"classes":["global"]},{"data":{"id":"nd","label":"NewDBMW","parent":"n3","color":"#fbfdb8"},"classes":["global"]},{"data":{"id":"n2","label":"main","parent":"n3","color":"#3d4cc4"},"classes":["global","unexported"]},{"data":{"id":"n4","label":"NewHandlersTest","parent":"n3","color":"#ff7e85"},"classes":["global"]},{"data":{"id":"n7","label":"NextRequestID","parent":"n3","color":"#2365c3"},"classes":["global"]},{"data":{"id":"nf","label":".GetMW","parent":"n10","color":"#ed687e"},"classes":["global"]},{"data":{"id":"n12","label":".Post","parent":"na","color":"#ed687e"},"classes":["global"]},{"data":{"id":"n15","label":".PostMW","parent":"n10","color":"#ed687e"},"classes":["global"]}],"edges":[{"data":{"id":"n14","source":"n12","target":"n15"},"classes":["static","method","call"]},{"data":{"id":"n1","source":"n2","target":"n4"},"classes":["static","function","call"]},{"data":{"id":"n5","source":"n6","target":"n7"},"classes":["deferred","static","function","call"]},{"data":{"id":"n8","source":"n9","target":"nb"},"classes":["static","method","call"]},{"data":{"id":"nc","source":"n9","target":"nd"},"classes":["static","function","call"]},{"data":{"id":"ne","source":"n9","target":"nf"},"classes":["static","method","call"]},{"data":{"id":"n11","source":"n12","target":"nb"},"classes":["static","method","call"]},{"data":{"id":"n13","source":"n12","target":"nd"},"classes":["static","function","call"]}]}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>});</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</span></p>
-<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;body&gt;</span></p>
-<p class="p1"><span class="s1">&lt;div id="info" class="overlay"&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;pre id="pkg-list"&gt;zcontext</span></p>
-<p class="p1"><span class="s1">&lt;/pre&gt;</span></p>
-<p class="p1"><span class="s1">&lt;/div&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;h2 id="gocyto-link" class="overlay"&gt;&lt;a href="https://github.com/protolambda/gocyto"&gt;Gocyto&lt;/a&gt; callgraph&lt;/h2&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;div id="cy"&gt;&lt;/div&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+<div id="info" class="overlay">
+    <pre id="pkg-list">zcontext
+</pre>
+</div>
+
+<h2 id="gocyto-link" class="overlay"><a href="https://github.com/protolambda/gocyto">Gocyto</a> callgraph</h2>
+
+<div id="cy"></div>
+
 </body>
+
 </html>
